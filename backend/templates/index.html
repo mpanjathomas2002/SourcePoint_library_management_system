@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0"/>
 <title>Library Mini Digital Collection</title>
 <!-- SEO: Update the domain below before deploying -->
-<meta name="description" content="Library Mini Digital Collection — a free digital knowledge management system. Browse, borrow, and discover books and study materials powered by AI."/>
-<meta name="keywords" content="digital knowledge management system,book borrowing,knowledge management,ebooks,study materials,AI knowledge management assistant"/>
+<meta name="description" content="Library Mini Digital Collection — a free digital collection. Browse, borrow, and discover historical photographs, newsletters, reports and more, powered by AI."/>
+<meta name="keywords" content="digital collection,historical photographs,newsletters,conference programmes,reports,newspaper clippings,posters,AI metadata"/>
 <meta name="author" content="Library Mini Digital Collection"/>
 <meta name="robots" content="index,follow"/>
 <link rel="canonical" href="https://yourdomain.com/"/>
@@ -18,7 +18,7 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="Library Mini Digital Collection"/>
 <meta name="twitter:description" content="Borrow books and get AI-powered reading recommendations."/>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Library","name":"Library Mini Digital Collection","description":"A free digital knowledge management system with AI-powered book discovery.","url":"https://yourdomain.com"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Library","name":"Library Mini Digital Collection","description":"A free digital collection with AI-powered discovery and metadata.","url":"https://yourdomain.com"}</script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
@@ -410,7 +410,7 @@ td:last-child{max-width:none;overflow:visible}
 
 <div id="loading">
   <div class="ll">Library Mini<span> Digital Collection</span></div>
-  <div class="lt">Digital Knowledge Management System</div>
+  <div class="lt">Digital Collection</div>
   <div class="lsp"></div>
   <script>
     /* Hard kill: remove loading screen after 1.5s no matter what.
@@ -439,7 +439,7 @@ td:last-child{max-width:none;overflow:visible}
 <div id="auth" class="hidden">
   <div class="ahero" aria-hidden="true">
     <div class="ahl">Library Mini<span> Digital Collection</span></div>
-    <p>Your intelligent digital knowledge management system. Discover, borrow, and explore books and study materials powered by AI.</p>
+    <p>Your intelligent digital collection. Discover, borrow, and explore historical photographs, newsletters, conference programmes, reports, newspaper clippings and posters, powered by AI.</p>
     <div>
       <div class="ahf"><i data-lucide="book-open" size="16"></i> Borrow books instantly</div>
       <div class="ahf"><i data-lucide="sparkles" size="16"></i> AI-powered summaries &amp; recommendations</div>
@@ -629,8 +629,8 @@ function pc(html){g('pc').innerHTML=html;icons();addTableScrollHints();}
 // ── SIDEBAR ───────────────────────────────────────────────────
 const NAV={
   user:[{id:'catalog',ic:'library-big',lb:'Browse Catalog'},{id:'mybooks',ic:'book-marked',lb:'My Bookshelf'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}],
-  admin:[{s:'Knowledge Management System'},{id:'dashboard',ic:'layout-dashboard',lb:'Dashboard'},{id:'catalog',ic:'library-big',lb:'Browse Catalog'},{id:'books',ic:'book',lb:'Manage Books'},{id:'categories',ic:'tags',lb:'Categories'},{s:'People'},{id:'users',ic:'users',lb:'Users'},{id:'borrowings',ic:'clipboard-list',lb:'Borrowings'},{s:'Config'},{id:'settings',ic:'settings',lb:'Settings'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}],
-  superadmin:[{s:'Knowledge Management System'},{id:'dashboard',ic:'layout-dashboard',lb:'Dashboard'},{id:'catalog',ic:'library-big',lb:'Browse Catalog'},{id:'books',ic:'book',lb:'Manage Books'},{id:'categories',ic:'tags',lb:'Categories'},{s:'People'},{id:'users',ic:'users',lb:'All Users'},{id:'admins',ic:'shield',lb:'Administrators'},{id:'borrowings',ic:'clipboard-list',lb:'Borrowings'},{s:'Config'},{id:'settings',ic:'settings',lb:'Settings'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}]
+  admin:[{s:'Digital Collection'},{id:'dashboard',ic:'layout-dashboard',lb:'Dashboard'},{id:'catalog',ic:'library-big',lb:'Browse Catalog'},{id:'books',ic:'book',lb:'Manage Books'},{id:'categories',ic:'tags',lb:'Categories'},{s:'People'},{id:'users',ic:'users',lb:'Users'},{id:'borrowings',ic:'clipboard-list',lb:'Borrowings'},{s:'Config'},{id:'settings',ic:'settings',lb:'Settings'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}],
+  superadmin:[{s:'Digital Collection'},{id:'dashboard',ic:'layout-dashboard',lb:'Dashboard'},{id:'catalog',ic:'library-big',lb:'Browse Catalog'},{id:'books',ic:'book',lb:'Manage Books'},{id:'categories',ic:'tags',lb:'Categories'},{s:'People'},{id:'users',ic:'users',lb:'All Users'},{id:'admins',ic:'shield',lb:'Administrators'},{id:'borrowings',ic:'clipboard-list',lb:'Borrowings'},{s:'Config'},{id:'settings',ic:'settings',lb:'Settings'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}]
 };
 function renderNav(){
   const items=NAV[S.user?.role]||NAV.user;
@@ -731,7 +731,7 @@ function mkCtrl(b,ib,mx){
 
   if(ib){
     return (hasFile ? '<button class="btn bp sm" onclick="readBook(window._bk.id,window._bk.title)"><i data-lucide="book-open" size="13"></i> Read</button>' : '')
-      + '<span class="badge bg-ok" style="order:-1">✓ In Knowledge Management System</span>'
+      + '<span class="badge bg-ok" style="order:-1">✓ In My Collection</span>'
       + '<button class="btn bs sm" onclick="retBk(window._bk.id,window._bk.title)">Return</button>'
       + '<button class="btn ba sm" onclick="aiSum(window._bk.id,window._bk.title)"><i data-lucide="sparkles" size="13"></i> AI</button>'
       ;
@@ -747,7 +747,7 @@ function mkCtrl(b,ib,mx){
       + '<div style="font-size:.8rem;color:var(--tx3);margin-bottom:6px">Borrow for: <strong id="dlbl">14 days</strong> (max '+mx+'d)</div>'
       + '<input type="range" min="1" max="'+mx+'" value="14" id="dslide" style="width:100%;margin-bottom:10px" oninput="updDlbl(this.value)"/>'
       + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
-      + '<button class="btn bp" onclick="borBk(window._bk.id,window._bk.title)"><i data-lucide="book-plus" size="16"></i> Add to My Knowledge Management System</button>'
+      + '<button class="btn bp" onclick="borBk(window._bk.id,window._bk.title)"><i data-lucide="book-plus" size="16"></i> Add to My Collection</button>'
       + '<button class="btn bs sm" onclick="aiSum(window._bk.id,window._bk.title)"><i data-lucide="sparkles" size="13"></i> AI</button>'
       + '</div></div>';
   }
@@ -794,7 +794,7 @@ async function borBk(bid,title){
   const r=await api.post('/library/borrow/',{book_id:bid,requested_days:days});
   if(!r){toast('Network error.','er');return;}
   const d=await r.json();
-  if(r.ok){toast(`"${title}" added to your knowledge management system!`,'ok');closeModal();S._cb=null;await loadBooks();}
+  if(r.ok){toast(`"${title}" added to your collection!`,'ok');closeModal();S._cb=null;await loadBooks();}
   else toast(d.book_id?.[0]||d.detail||d.non_field_errors?.[0]||'Could not borrow book.','er');
 }
 async function retBk(bid,title){
@@ -817,10 +817,10 @@ async function pgMyBooks(){
   const[act,all]=await Promise.all([api.json('/library/my-books/?status=active'),api.json('/library/my-books/')]);
   const active=act||[];const ret=(all||[]).filter(b=>b.status==='returned');
   pc(`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px">
-    <div><h2 style="font-size:1.4rem;color:var(--forest)">My Knowledge Management System</h2><p style="color:var(--text3);font-size:.85rem">${active.length} book${active.length!==1?'s':''} borrowed</p></div>
+    <div><h2 style="font-size:1.4rem;color:var(--forest)">My Collection</h2><p style="color:var(--text3);font-size:.85rem">${active.length} book${active.length!==1?'s':''} borrowed</p></div>
     <button class="btn bs" onclick="go('catalog')"><i data-lucide="plus" size="16"></i> Browse More</button>
   </div>
-  ${active.length===0?`<div class="empty"><div class="eico">📚</div><h3>Your knowledge management system is empty</h3><p>Browse the catalog to borrow your first book.</p><button class="btn bp" style="margin-top:1rem" onclick="go('catalog')">Browse Books</button></div>`
+  ${active.length===0?`<div class="empty"><div class="eico">📚</div><h3>Your collection is empty</h3><p>Browse the catalog to borrow your first book.</p><button class="btn bp" style="margin-top:1rem" onclick="go('catalog')">Browse Books</button></div>`
     :`<div class="shlist">${active.map(shCard).join('')}</div>`}
   ${ret.length?`<div style="margin-top:2rem"><h3 style="font-size:1rem;color:var(--text2);margin-bottom:1rem">Reading History</h3>
     <div class="tw"><table><thead><tr><th>Book</th><th>Borrowed</th><th>Returned</th><th>Action</th></tr></thead>
@@ -933,7 +933,7 @@ async function pgDash(){
   // Load stats in background
   const st = await api.json('/library/admin/stats/') || {};
 
-  pc(`<div style="margin-bottom:1.5rem"><h2 style="font-size:1.4rem;color:var(--forest)">Good ${gr()}, ${x(S.user.first_name||'Admin')}</h2><p style="color:var(--text3);font-size:.87rem">Knowledge management system overview for today.</p></div>
+  pc(`<div style="margin-bottom:1.5rem"><h2 style="font-size:1.4rem;color:var(--forest)">Good ${gr()}, ${x(S.user.first_name||'Admin')}</h2><p style="color:var(--text3);font-size:.87rem">Collection overview for today.</p></div>
   <div class="sgrid">
     ${sc('g','library-big',st.total_books??'—','HISTORICAL PHOTOGRAPH')}
     ${sc('b','users',st.total_users??'—','NEWSLETTER')}
@@ -1090,7 +1090,7 @@ async function subAddBook(){
     const res=await fetch(API+'/library/books/create/',{method:'POST',headers:h,body:fd});
     const d=await res.json();
     if(res.ok){
-      toast(`"${t}" added to the knowledge management system!`,'ok');
+      toast(`"${t}" added to the collection!`,'ok');
       closeModal();S._bc=null;await loadBooks('',true);pgBooks();
     } else {
       toast(d.error||d.title?.[0]||d.detail||'Failed to save book.','er');
@@ -1256,7 +1256,7 @@ function showAddAdm(){
         <div class="ig"><label>First Name</label><input type="text" id="amf" placeholder="Alice"/></div>
         <div class="ig"><label>Last Name</label><input type="text" id="aml" placeholder="Nakamura"/></div>
       </div>
-      <div class="ig"><label>Email Address *</label><input type="email" id="ame" placeholder="admin@yourknowledgemanagementsystem.com"/></div>
+      <div class="ig"><label>Email Address *</label><input type="email" id="ame" placeholder="admin@example.com"/></div>
       <div class="ig">
         <label>Password *</label>
         <input type="password" id="amp" placeholder="Min. 8 characters"/>
