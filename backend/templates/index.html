@@ -604,10 +604,10 @@ async function boot(){
 }
 
 // ── ROUTER ────────────────────────────────────────────────────
-const TITLES={catalog:'Browse Catalog',mybooks:'My Bookshelf',ai:'AI Assistant — Sage',
-  profile:'My Profile',dashboard:'Dashboard',books:'Manage Books',
-  categories:'Categories',users:'Users',borrowings:'Borrowings',
-  settings:'Borrow Settings',admins:'Administrators'};
+const TITLES={catalog:'Browse Collection',mybooks:'My Collection',ai:'AI Assistant — Sage',
+  profile:'My Profile',dashboard:'Dashboard',books:'Manage Items',
+  categories:'Categories',users:'Users',borrowings:'Access Records',
+  settings:'Access Settings',admins:'Administrators'};
 
 function go(page){
   S.page=page;setNav(page);
@@ -628,9 +628,9 @@ function pc(html){g('pc').innerHTML=html;icons();addTableScrollHints();}
 
 // ── SIDEBAR ───────────────────────────────────────────────────
 const NAV={
-  user:[{id:'catalog',ic:'library-big',lb:'Browse Catalog'},{id:'mybooks',ic:'book-marked',lb:'My Bookshelf'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}],
-  admin:[{s:'Digital Collection'},{id:'dashboard',ic:'layout-dashboard',lb:'Dashboard'},{id:'catalog',ic:'library-big',lb:'Browse Catalog'},{id:'books',ic:'book',lb:'Manage Books'},{id:'categories',ic:'tags',lb:'Categories'},{s:'People'},{id:'users',ic:'users',lb:'Users'},{id:'borrowings',ic:'clipboard-list',lb:'Borrowings'},{s:'Config'},{id:'settings',ic:'settings',lb:'Settings'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}],
-  superadmin:[{s:'Digital Collection'},{id:'dashboard',ic:'layout-dashboard',lb:'Dashboard'},{id:'catalog',ic:'library-big',lb:'Browse Catalog'},{id:'books',ic:'book',lb:'Manage Books'},{id:'categories',ic:'tags',lb:'Categories'},{s:'People'},{id:'users',ic:'users',lb:'All Users'},{id:'admins',ic:'shield',lb:'Administrators'},{id:'borrowings',ic:'clipboard-list',lb:'Borrowings'},{s:'Config'},{id:'settings',ic:'settings',lb:'Settings'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}]
+  user:[{id:'catalog',ic:'library-big',lb:'Browse Collection'},{id:'mybooks',ic:'book-marked',lb:'My Collection'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}],
+  admin:[{s:'Digital Collection'},{id:'dashboard',ic:'layout-dashboard',lb:'Dashboard'},{id:'catalog',ic:'library-big',lb:'Browse Collection'},{id:'books',ic:'book',lb:'Manage Items'},{id:'categories',ic:'tags',lb:'Categories'},{s:'People'},{id:'users',ic:'users',lb:'Users'},{id:'borrowings',ic:'clipboard-list',lb:'Access Records'},{s:'Config'},{id:'settings',ic:'settings',lb:'Settings'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}],
+  superadmin:[{s:'Digital Collection'},{id:'dashboard',ic:'layout-dashboard',lb:'Dashboard'},{id:'catalog',ic:'library-big',lb:'Browse Collection'},{id:'books',ic:'book',lb:'Manage Items'},{id:'categories',ic:'tags',lb:'Categories'},{s:'People'},{id:'users',ic:'users',lb:'All Users'},{id:'admins',ic:'shield',lb:'Administrators'},{id:'borrowings',ic:'clipboard-list',lb:'Access Records'},{s:'Config'},{id:'settings',ic:'settings',lb:'Settings'},{id:'ai',ic:'sparkles',lb:'AI Assistant'},{id:'profile',ic:'user',lb:'My Profile'}]
 };
 function renderNav(){
   const items=NAV[S.user?.role]||NAV.user;
@@ -678,7 +678,7 @@ function renderCatalog(){
   const co=S.cats.map(c=>`<option value="${c.slug}" ${S.fi.cat===c.slug?'selected':''}>${x(c.name)}</option>`).join('');
   pc(`
     <div class="fsrch" style="margin-bottom:1rem"><i data-lucide="search" size="15" style="color:var(--text3);flex-shrink:0"></i>
-      <input type="text" placeholder="Search by title, author, ISBN…" value="${x(S.q)}" oninput="S.q=this.value;deb(()=>loadBooks(booksQS()).then(renderCatalog),380)()" /></div>
+      <input type="text" placeholder="Search by title, author, keyword…" value="${x(S.q)}" oninput="S.q=this.value;deb(()=>loadBooks(booksQS()).then(renderCatalog),380)()" /></div>
     <div class="fbar">
       <select class="fsel" onchange="S.fi.cat=this.value;pgCatalog()"><option value="">All Categories</option>${co}</select>
       <select class="fsel" onchange="S.fi.type=this.value;pgCatalog()">
@@ -696,9 +696,9 @@ function renderCatalog(){
         <option value="title" ${S.fi.ord==='title'?'selected':''}>Title A–Z</option>
         <option value="author" ${S.fi.ord==='author'?'selected':''}>Author A–Z</option>
       </select>
-      <span style="font-size:.8rem;color:var(--text3);white-space:nowrap">${S.books.length} books</span>
+      <span style="font-size:.8rem;color:var(--text3);white-space:nowrap">${S.books.length} items</span>
     </div>
-    ${S.books.length===0?`<div class="empty"><div class="eico">📚</div><h3>No books found</h3><p>Try different search terms or filters.</p></div>`
+    ${S.books.length===0?`<div class="empty"><div class="eico">📚</div><h3>No items found</h3><p>Try different search terms or filters.</p></div>`
       :`<div class="bgrid">${S.books.map(bc).join('')}</div>`}
   `);
 }
@@ -715,9 +715,9 @@ function bc(b){
 
 // ── BOOK DETAIL MODAL ─────────────────────────────────────────
 async function openBk(id){
-  showModal('<div style="padding:2.5rem;text-align:center"><div class="spin" style="margin:0 auto"></div><p style="margin-top:12px;font-size:.83rem;color:var(--tx3)">Loading book details…</p></div>');
+  showModal('<div style="padding:2.5rem;text-align:center"><div class="spin" style="margin:0 auto"></div><p style="margin-top:12px;font-size:.83rem;color:var(--tx3)">Loading item details…</p></div>');
   const r=await api.get('/library/books/'+id+'/');
-  if(!r||!r.ok){closeModal();toast('Failed to load book.','er');return;}
+  if(!r||!r.ok){closeModal();toast('Failed to load item.','er');return;}
   renderBkModal(await r.json());
 }
 
@@ -738,7 +738,7 @@ function mkCtrl(b,ib,mx){
   }
   if(isAdm && hasFile){
     return '<span class="badge bg-in">Admin</span>'
-      + '<button class="btn bp sm" onclick="readBook(window._bk.id,window._bk.title)"><i data-lucide="book-open" size="13"></i> Read Book</button>'
+      + '<button class="btn bp sm" onclick="readBook(window._bk.id,window._bk.title)"><i data-lucide="book-open" size="13"></i> Open Item</button>'
       + '<button class="btn ba sm" onclick="aiSum(window._bk.id,window._bk.title)"><i data-lucide="sparkles" size="13"></i> AI Summary</button>'
       ;
   }
@@ -795,7 +795,7 @@ async function borBk(bid,title){
   if(!r){toast('Network error.','er');return;}
   const d=await r.json();
   if(r.ok){toast(`"${title}" added to your collection!`,'ok');closeModal();S._cb=null;await loadBooks();}
-  else toast(d.book_id?.[0]||d.detail||d.non_field_errors?.[0]||'Could not borrow book.','er');
+  else toast(d.book_id?.[0]||d.detail||d.non_field_errors?.[0]||'Could not borrow item.','er');
 }
 async function retBk(bid,title){
   const bs=await api.json('/library/my-books/?status=active');
@@ -803,7 +803,7 @@ async function retBk(bid,title){
   if(!bw){toast('Borrowing record not found.','er');return;}
   const r=await api.post('/library/borrow/'+bw.id+'/return/',{});
   if(r.ok){toast(`"${title}" returned.`,'ok');closeModal();S._cb=null;}
-  else toast('Could not return book.','er');
+  else toast('Could not return item.','er');
 }
 async function rateBk(bid,score){
   const r=await api.post('/library/books/'+bid+'/rate/',{book:bid,score});
@@ -817,13 +817,13 @@ async function pgMyBooks(){
   const[act,all]=await Promise.all([api.json('/library/my-books/?status=active'),api.json('/library/my-books/')]);
   const active=act||[];const ret=(all||[]).filter(b=>b.status==='returned');
   pc(`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px">
-    <div><h2 style="font-size:1.4rem;color:var(--forest)">My Collection</h2><p style="color:var(--text3);font-size:.85rem">${active.length} book${active.length!==1?'s':''} borrowed</p></div>
+    <div><h2 style="font-size:1.4rem;color:var(--forest)">My Collection</h2><p style="color:var(--text3);font-size:.85rem">${active.length} item${active.length!==1?'s':''} borrowed</p></div>
     <button class="btn bs" onclick="go('catalog')"><i data-lucide="plus" size="16"></i> Browse More</button>
   </div>
-  ${active.length===0?`<div class="empty"><div class="eico">📚</div><h3>Your collection is empty</h3><p>Browse the catalog to borrow your first book.</p><button class="btn bp" style="margin-top:1rem" onclick="go('catalog')">Browse Books</button></div>`
+  ${active.length===0?`<div class="empty"><div class="eico">📚</div><h3>Your collection is empty</h3><p>Browse the collection to borrow your first item.</p><button class="btn bp" style="margin-top:1rem" onclick="go('catalog')">Browse Collection</button></div>`
     :`<div class="shlist">${active.map(shCard).join('')}</div>`}
-  ${ret.length?`<div style="margin-top:2rem"><h3 style="font-size:1rem;color:var(--text2);margin-bottom:1rem">Reading History</h3>
-    <div class="tw"><table><thead><tr><th>Book</th><th>Borrowed</th><th>Returned</th><th>Action</th></tr></thead>
+  ${ret.length?`<div style="margin-top:2rem"><h3 style="font-size:1rem;color:var(--text2);margin-bottom:1rem">Access History</h3>
+    <div class="tw"><table><thead><tr><th>Item</th><th>Borrowed</th><th>Returned</th><th>Action</th></tr></thead>
     <tbody>${ret.map(b=>`<tr><td><strong style="font-size:.85rem">${x(b.book?.title)}</strong><div style="font-size:.75rem;color:var(--text3)">${x(b.book?.author)}</div></td><td style="font-size:.82rem;color:var(--text3)">${fd(b.borrowed_at)}</td><td style="font-size:.82rem;color:var(--text3)">${fd(b.returned_at)}</td><td><button class="btn bg sm" onclick="openBk('${b.book?.id}')">Rate</button></td></tr>`).join('')}</tbody></table></div></div>`:''}
   `);
 }
@@ -849,21 +849,21 @@ function shCard(bw){
 // ── AI CHAT ───────────────────────────────────────────────────
 function pgAI(){
   pc(`<div class="aipage"><div class="aimsg" id="aim">${S.chat.length===0?aiWel():S.chat.map(bub).join('')}</div>
-    <div class="airow"><textarea class="aiinp" id="aiin" rows="1" placeholder="Ask about books, get summaries, recommendations…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI();}"></textarea>
+    <div class="airow"><textarea class="aiinp" id="aiin" rows="1" placeholder="Ask about the collection, get summaries, recommendations…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI();}"></textarea>
     <button class="btn bp" onclick="sendAI()"><i data-lucide="send" size="16"></i></button></div></div>`);
   scrAI();
 }
 function aiWel(){
   const chips=[
-    'Find books on African history','Summarize Things Fall Apart',
-    'Recommend programming books','Most popular books',
-    'Philosophy for beginners','Books similar to Sapiens',
+    'Find photographs on African history','Summarize Things Fall Apart',
+    'Recommend reports and newsletters','Most popular items',
+    'Philosophy for beginners','Items similar to a favourite',
     'What can I borrow today?','Best study materials'
   ];
   return `<div class="aiwel">
     <div style="font-size:2.5rem;margin-bottom:.875rem">✨</div>
     <h3>Meet Sage — Your AI Librarian</h3>
-    <p>Powered by Groq AI (free). Ask me to find books, summarize titles, recommend reads, or answer any question about the catalog.</p>
+    <p>Powered by Groq AI (free). Ask me to find items, summarize titles, recommend reads, or answer any question about the collection.</p>
     <div class="aichips">${chips.map(c=>`<div class="chip" onclick="sendAI('${c}')">${c}</div>`).join('')}</div>
   </div>`;}
 function bub(m){
@@ -944,13 +944,13 @@ async function pgDash(){
   </div>
   <div class="card" style="margin-bottom:1.5rem"><h3 style="font-size:.95rem;margin-bottom:1rem;color:var(--forest)">Quick Actions</h3>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
-      <button class="btn bp" onclick="showAddBook()"><i data-lucide="plus" size="16"></i> Add Book</button>
+      <button class="btn bp" onclick="showAddBook()"><i data-lucide="plus" size="16"></i> Add Item</button>
       <button class="btn bs" onclick="go('users')"><i data-lucide="users" size="16"></i> Manage Users</button>
-      <button class="btn bs" onclick="go('borrowings')"><i data-lucide="clipboard-list" size="16"></i> Borrowings</button>
+      <button class="btn bs" onclick="go('borrowings')"><i data-lucide="clipboard-list" size="16"></i> Access Records</button>
       <button class="btn ba" style="margin-left:auto" onclick="clearMock()"><i data-lucide="trash-2" size="16"></i> Clear Mock Data</button>
     </div>
   </div>
-  <h3 style="font-size:1rem;color:var(--forest);margin-bottom:1rem">Featured Books</h3>
+  <h3 style="font-size:1rem;color:var(--forest);margin-bottom:1rem">Featured Items</h3>
   <div class="bgrid">${S.books.slice(0,6).map(bc).join('')}</div>`);
 }
 
@@ -960,10 +960,10 @@ function sc(cl,ic,val,lbl){return `<div class="scard"><div class="sicon ${cl}"><
 async function pgBooks(){
   const bks=await api.json('/library/admin/books/?ordering=-created_at&page_size=100')||[];
   pc(`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px">
-    <h2 style="font-size:1.4rem;color:var(--forest)">Manage Books</h2>
-    <button class="btn bp" onclick="showAddBook()"><i data-lucide="plus" size="16"></i> Add Book</button>
+    <h2 style="font-size:1.4rem;color:var(--forest)">Manage Items</h2>
+    <button class="btn bp" onclick="showAddBook()"><i data-lucide="plus" size="16"></i> Add Item</button>
   </div>
-  <div class="tw"><table><thead><tr><th>Book</th><th>Categories</th><th>Type</th><th>Rating</th><th>Borrows</th><th>Status</th><th>Actions</th></tr></thead>
+  <div class="tw"><table><thead><tr><th>Item</th><th>Categories</th><th>Type</th><th>Rating</th><th>Borrows</th><th>Status</th><th>Actions</th></tr></thead>
   <tbody>${bks.map(b=>`<tr>
     <td><div style="font-weight:500;font-size:.87rem;max-width:200px">${x(b.title)}</div><div style="font-size:.75rem;color:var(--text3)">${x(b.author)}</div></td>
     <td style="font-size:.78rem;max-width:140px">${(b.categories||[]).map(c=>c.name).join(', ')||'—'}</td>
@@ -976,10 +976,10 @@ async function pgBooks(){
 }
 function showAddBook(){
   const co=S.cats.map(c=>`<option value="${c.id}">${x(c.name)}</option>`).join('');
-  showModal(`<div class="mhd"><h3>Add New Book</h3><button class="mcl" onclick="closeModal()"><i data-lucide="x" size="17"></i></button></div>
+  showModal(`<div class="mhd"><h3>Add New Item</h3><button class="mcl" onclick="closeModal()"><i data-lucide="x" size="17"></i></button></div>
   <div class="mbody">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="ig" style="grid-column:span 2"><label>Title *</label><input type="text" id="abt" placeholder="Book title"/></div>
+      <div class="ig" style="grid-column:span 2"><label>Title *</label><input type="text" id="abt" placeholder="Item title"/></div>
       <div class="ig"><label>Author *</label><input type="text" id="aba" placeholder="Author name"/></div>
       <div class="ig"><label>Publisher</label><input type="text" id="abpu"/></div>
       <div class="ig"><label>Year</label><input type="number" id="aby" placeholder="2024"/></div>
@@ -999,9 +999,9 @@ function showAddBook(){
       <div style="font-size:.73rem;color:var(--text3);margin-top:4px">JPG, PNG, WebP supported. Saved to Supabase or local server.</div>
     </div>
     <div class="ig">
-      <label>Book File (PDF / ePub) — Upload from device</label>
+      <label>File (PDF, document or image) — Upload from device</label>
       <input type="file" id="abbook_file" accept=".pdf,.epub,.mobi,.txt,.docx,image/*" onchange="aiFillMeta()" style="border:1.5px dashed var(--border);border-radius:var(--r2);padding:10px;background:var(--cream);cursor:pointer;width:100%;box-sizing:border-box"/>
-      <div style="font-size:.73rem;color:var(--text3);margin-top:4px">Users read this after borrowing. Uploaded to Supabase storage or local server.</div>
+      <div style="font-size:.73rem;color:var(--text3);margin-top:4px">Users open this after borrowing. Uploaded to Supabase storage or local server.</div>
       <button type="button" class="btn bs sm" id="aimetabtn" style="margin-top:8px" onclick="aiFillMeta()">✨ Auto-fill metadata with AI</button>
       <div id="aimetamsg" style="font-size:.73rem;color:var(--text3);margin-top:4px">Metadata (title, author, year, description) is generated automatically when you choose a file.</div>
     </div>
@@ -1009,10 +1009,10 @@ function showAddBook(){
       <label>Categories (hold Ctrl/Cmd for multiple)</label>
       <select id="abca" multiple style="height:80px;width:100%">${co}</select>
     </div>
-    <div class="ig"><label>Description</label><textarea id="abde" rows="3" placeholder="What is this book about?"></textarea></div>
+    <div class="ig"><label>Description</label><textarea id="abde" rows="3" placeholder="What is this item about?"></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
       <button class="btn bs" onclick="closeModal()">Cancel</button>
-      <button class="btn bp" id="savebookbtn" onclick="subAddBook()"><i data-lucide="save" size="15"></i> Save Book</button>
+      <button class="btn bp" id="savebookbtn" onclick="subAddBook()"><i data-lucide="save" size="15"></i> Save Item</button>
     </div>
   </div>`,true);
 }
@@ -1093,12 +1093,12 @@ async function subAddBook(){
       toast(`"${t}" added to the collection!`,'ok');
       closeModal();S._bc=null;await loadBooks('',true);pgBooks();
     } else {
-      toast(d.error||d.title?.[0]||d.detail||'Failed to save book.','er');
+      toast(d.error||d.title?.[0]||d.detail||'Failed to save item.','er');
     }
   }catch(e){
     toast('Network error: '+e.message,'er');
   }finally{
-    if(btn){btn.disabled=false;btn.innerHTML='<i data-lucide="save" size="15"></i> Save Book';icons();}
+    if(btn){btn.disabled=false;btn.innerHTML='<i data-lucide="save" size="15"></i> Save Item';icons();}
   }
 }
 async function delBk(id,title){
@@ -1119,7 +1119,7 @@ async function pgCats(){
     ${S.cats.length===0?`<div class="empty" style="grid-column:span 4"><div class="eico">🏷️</div><h3>No categories yet</h3><p>Add your first category.</p></div>`
       :S.cats.map(c=>`<div class="ccard">
         <div class="cico" style="background:${c.color}22">${c.icon||'📚'}</div>
-        <div style="flex:1;min-width:0"><div class="cname">${x(c.name)}</div><div class="ccnt">${c.book_count} books</div></div>
+        <div style="flex:1;min-width:0"><div class="cname">${x(c.name)}</div><div class="ccnt">${c.book_count} items</div></div>
         <button class="cdel" onclick="delCat('${c.id}','${x(c.name)}')" title="Delete"><i data-lucide="trash-2" size="14"></i></button>
       </div>`).join('')}
   </div>`);
@@ -1179,8 +1179,8 @@ async function delU(id,name){if(!confirm(`Delete user "${name}"?`))return;const 
 // ── ADMIN: BORROWINGS ─────────────────────────────────────────
 async function pgBorrows(){
   const d=await api.json('/library/admin/borrowings/?ordering=-borrowed_at&page_size=100')||[];
-  pc(`<div style="margin-bottom:1.5rem"><h2 style="font-size:1.4rem;color:var(--forest)">All Borrowings</h2></div>
-  <div class="tw"><table><thead><tr><th>User</th><th>Book</th><th>Borrowed</th><th>Due</th><th>Days</th><th>Status</th></tr></thead>
+  pc(`<div style="margin-bottom:1.5rem"><h2 style="font-size:1.4rem;color:var(--forest)">All Access Records</h2></div>
+  <div class="tw"><table><thead><tr><th>User</th><th>Item</th><th>Borrowed</th><th>Due</th><th>Days</th><th>Status</th></tr></thead>
   <tbody>${d.map(b=>`<tr>
     <td style="font-size:.83rem">${x(b.user?.email||'')}</td>
     <td><div style="font-weight:500;font-size:.85rem;max-width:180px">${x(b.book?.title||'')}</div><div style="font-size:.73rem;color:var(--text3)">${x(b.book?.author||'')}</div></td>
@@ -1194,7 +1194,7 @@ async function pgBorrows(){
 // ── ADMIN: SETTINGS ───────────────────────────────────────────
 async function pgSettings(){
   const s=await api.json('/library/settings/')||{};
-  pc(`<div style="max-width:520px"><div style="margin-bottom:1.5rem"><h2 style="font-size:1.4rem;color:var(--forest)">Borrow Settings</h2><p style="color:var(--text3);font-size:.87rem">System-wide borrowing configuration.</p></div>
+  pc(`<div style="max-width:520px"><div style="margin-bottom:1.5rem"><h2 style="font-size:1.4rem;color:var(--forest)">Access Settings</h2><p style="color:var(--text3);font-size:.87rem">System-wide borrowing configuration.</p></div>
   <div class="card">
     <div class="ig"><label>Default Max Borrow Period (days)</label><input type="number" id="smx" value="${s.default_max_days||30}" min="1" max="365"/></div>
     <div class="ig"><label>Grace Period After Due Date (days)</label><input type="number" id="sgr" value="${s.grace_period_days||3}" min="0" max="30"/></div>
@@ -1360,9 +1360,9 @@ async function readBook(bookId, title){
   if(le) le.remove();
 
   if(!resp){ toast('Could not connect to server.','er'); return; }
-  if(resp.status===403){ toast('Borrow this book first to read it.','er'); return; }
-  if(resp.status===404){ toast('No file attached to this book.','er'); return; }
-  if(!resp.ok){ toast('Could not load book file.','er'); return; }
+  if(resp.status===403){ toast('Borrow this item first to open it.','er'); return; }
+  if(resp.status===404){ toast('No file attached to this item.','er'); return; }
+  if(!resp.ok){ toast('Could not load item file.','er'); return; }
 
   const ct = resp.headers.get('content-type') || '';
 
