@@ -959,23 +959,15 @@ async function pgDash(){
 }
 
 function typeAnalytics(st){
-  const rows=st.items_by_type||[];
+  const rows=(st.items_by_type||[]).slice().sort((a,b)=>b.count-a.count);
   const total=st.items_total||rows.reduce((n,r)=>n+r.count,0);
-  const max=Math.max(1,...rows.map(r=>r.count));
-  const body=rows.length?rows.map(r=>{
-    const pct=total?Math.round(r.count*100/total):0;
-    const w=r.count?Math.max(3,Math.round(r.count*100/max)):0;
-    return `<div style="display:grid;grid-template-columns:minmax(110px,200px) 1fr 86px;gap:12px;align-items:center;padding:6px 0">
-      <div style="font-size:.85rem;${r.other?'color:var(--text3);font-style:italic':''}">${x(r.name)}</div>
-      <div style="background:var(--cream);border-radius:99px;height:10px;overflow:hidden"><div style="width:${w}%;height:100%;background:${r.other?'var(--text3)':'var(--forest)'};border-radius:99px"></div></div>
-      <div style="font-size:.82rem;text-align:right"><b>${r.count}</b> <span style="color:var(--text3)">${pct}%</span></div>
-    </div>`;
-  }).join(''):'<p style="font-size:.85rem;color:var(--text3)">No collection types yet. Create some with <b>Manage Types</b> and they will show up here.</p>';
-  return `<div class="card" style="margin-bottom:1.5rem">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:.5rem">
-      <h3 style="font-size:.95rem;color:var(--forest)">Items by collection type</h3>
+  const cards=rows.length?`<div class="sgrid">${rows.map(r=>sc(r.other?'a':'g',r.other?'layers':'shapes',r.count,x(r.name))).join('')}</div>`
+    :'<p style="font-size:.85rem;color:var(--text3)">No collection types yet. Create some with <b>Manage Types</b> and they will show up here.</p>';
+  return `<div style="margin-bottom:1.5rem">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:.75rem">
+      <h3 style="font-size:1rem;color:var(--forest)">Items by collection type</h3>
       <span style="font-size:.78rem;color:var(--text3)">${total} item${total===1?'':'s'} in total</span>
-    </div>${body}</div>`;
+    </div>${cards}</div>`;
 }
 function sc(cl,ic,val,lbl){return `<div class="scard"><div class="sicon ${cl}"><i data-lucide="${ic}" size="18"></i></div><div class="sval">${val}</div><div class="slbl">${lbl}</div></div>`;}
 
