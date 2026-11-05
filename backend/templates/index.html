@@ -1043,7 +1043,7 @@ function showAddBook(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="ig" style="grid-column:span 2"><label>Title *</label><input type="text" id="abt" placeholder="Title of the item"/></div>
       <div class="ig"><label>Creator *</label><input type="text" id="aba" placeholder="Person or organisation" oninput="abId()"/></div>
-      <div class="ig"><label>Date</label><input type="date" id="abdt" onchange="abId()"/></div>
+      <div class="ig"><label>Date (year-month-day)</label><input type="text" id="abdt" inputmode="numeric" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" oninput="abDate(this)"/></div>
       <div class="ig" style="grid-column:span 2"><label>Subject</label><input type="text" id="absu" placeholder="Topics or keywords, separated by commas"/></div>
       <div class="ig"><label>Type</label>
         <select id="abmt" onchange="abToggle()"><option value="text">Text</option><option value="image">Image</option></select>
@@ -1061,7 +1061,6 @@ function showAddBook(){
       <div class="ig" style="grid-column:span 2"><label>Copyright / License</label><input type="text" id="abcr" placeholder="e.g. Public domain, CC BY 4.0, (c) 2024 Name"/></div>
       <div class="ig" style="grid-column:span 2"><label>Description</label><textarea id="abde" rows="3" placeholder="What is this item about?"></textarea></div>
       <div class="ig"><label>Copies</label><input type="number" id="abcp" value="3" min="1"/></div>
-      <div class="ig"><label>Max Borrow Days</label><input type="number" id="abmd" placeholder="30 (system default)"/></div>
     </div>
     <div class="ig" id="abdocbox" style="margin-top:6px">
       <label>Document (PDF, Word, ePub or text) - optional</label>
@@ -1087,6 +1086,21 @@ function showAddBook(){
     </div>
   </div>`,true);
   abToggle();
+}
+function abDate(el){
+  // Keep the date in year-month-day order: digits only, dashes added automatically
+  const d=el.value.replace(/\D/g,'').slice(0,8);
+  let v=d.slice(0,4);
+  if(d.length>4)v+='-'+d.slice(4,6);
+  if(d.length>6)v+='-'+d.slice(6,8);
+  el.value=v;abId();
+}
+function abDateOk(v){
+  if(!v)return true;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;
+  const [y,m,dd]=v.split('-').map(Number);
+  const t=new Date(Date.UTC(y,m-1,dd));
+  return t.getUTCFullYear()===y&&t.getUTCMonth()===m-1&&t.getUTCDate()===dd;
 }
 function abToggle(){
   const img=g('abmt')?.value==='image';
@@ -1116,6 +1130,7 @@ async function subAddBook(){
   if(!t||!a){toast('Title and creator are required.','er');return;}
   const isImg=g('abmt')?.value==='image';
   const d=g('abdt')?.value||'';
+  if(!abDateOk(d)){toast('Date must be year-month-day, for example 2024-03-15.','er');return;}
 
   const btn=g('savebookbtn');
   if(btn){btn.disabled=true;btn.innerHTML='<i data-lucide="upload" size="15"></i> Saving…';icons();}
@@ -1127,7 +1142,6 @@ async function subAddBook(){
   fd.append('publication_year',d?d.slice(0,4):'');
   fd.append('material_type',g('abty')?.value||'book');
   fd.append('language',g('abla')?.value||'English');
-  fd.append('max_borrow_days',g('abmd')?.value||'');
   fd.append('total_copies',g('abcp')?.value||'3');
   fd.append('description',g('abde')?.value||'');
   // Metadata typed by the admin
