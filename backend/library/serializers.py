@@ -7,7 +7,7 @@ REST API serializers for library models.
 from rest_framework import serializers
 from django.utils import timezone
 from datetime import timedelta
-from .models import Category, Book, Borrowing, Rating, BorrowSetting
+from .models import Category, Book, Borrowing, Rating, BorrowSetting, ItemType
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -24,6 +24,22 @@ class CategorySerializer(serializers.ModelSerializer):
         from slugify import slugify
         validated_data['slug'] = slugify(validated_data['name'])
         return super().create(validated_data)
+
+
+class ItemTypeSerializer(serializers.ModelSerializer):
+    """Admin-created item types."""
+    class Meta:
+        model = ItemType
+        fields = ['id', 'name']
+        read_only_fields = ['id']
+
+    def validate_name(self, value):
+        value = ' '.join((value or '').split())
+        if len(value) < 2:
+            raise serializers.ValidationError('Type name is too short.')
+        if ItemType.objects.filter(name__iexact=value).exists():
+            raise serializers.ValidationError('That type already exists.')
+        return value
 
 
 class BookListSerializer(serializers.ModelSerializer):
@@ -44,7 +60,7 @@ class BookListSerializer(serializers.ModelSerializer):
             'language', 'material_type', 'categories', 'cover_url',
             'average_rating', 'rating_count', 'borrow_count',
             'is_available', 'available_copies', 'is_featured',
-            'is_borrowed_by_user', 'user_rating', 'tags', 'book_file_url', 'file_type',
+            'is_borrowed_by_user', 'user_rating', 'tags', 'metadata', 'book_file_url', 'file_type',
         ]
 
     def get_cover_url(self, obj):
@@ -99,7 +115,7 @@ class BookDetailSerializer(serializers.ModelSerializer):
             'id', 'title', 'slug', 'author', 'isbn', 'publisher',
             'publication_year', 'language', 'pages', 'material_type',
             'description', 'summary', 'cover_url', 'file_url', 'book_file_url', 'file_type',
-            'categories', 'category_ids', 'tags',
+            'categories', 'category_ids', 'tags', 'metadata',
             'average_rating', 'rating_count', 'borrow_count', 'view_count',
             'is_available', 'available_copies', 'total_copies',
             'max_borrow_days', 'effective_max_borrow_days',

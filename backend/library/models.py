@@ -53,6 +53,22 @@ class Category(models.Model):
         return self.books.filter(is_available=True).count()
 
 
+class ItemType(models.Model):
+    """Admin-created item type (e.g. Historical Photograph, Newsletter, Poster)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=60, unique=True)
+    created_by = models.ForeignKey(
+        'users.User', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='created_item_types'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
 class Book(models.Model):
     """
     Represents a book or educational study material in the library.
@@ -79,7 +95,7 @@ class Book(models.Model):
     publication_year = models.IntegerField(null=True, blank=True)
     language = models.CharField(max_length=50, default='English')
     pages = models.IntegerField(null=True, blank=True)
-    material_type = models.CharField(max_length=30, choices=MATERIAL_TYPES, default='book')
+    material_type = models.CharField(max_length=60, default='book', help_text='Item type created by an admin (see ItemType)')
 
     # Content and description
     description = models.TextField(blank=True)
@@ -90,6 +106,7 @@ class Book(models.Model):
     # Categorization
     categories = models.ManyToManyField(Category, related_name='books', blank=True)
     tags = models.JSONField(default=list, blank=True, help_text="List of searchable tags")
+    metadata = models.JSONField(default=dict, blank=True, help_text="Dublin Core style metadata: date, subject, type, format, identifier, copyright")
 
     # Availability and borrow settings
     is_available = models.BooleanField(default=True, db_index=True)

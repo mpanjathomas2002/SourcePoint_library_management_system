@@ -20,11 +20,11 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from slugify import slugify
 
-from .models import Category, Book, Borrowing, Rating, BorrowSetting
+from .models import Category, Book, Borrowing, Rating, BorrowSetting, ItemType
 from users.models import User
 from .serializers import (
     CategorySerializer, BookListSerializer, BookDetailSerializer,
-    BorrowingSerializer, RatingSerializer, BorrowSettingSerializer
+    BorrowingSerializer, RatingSerializer, BorrowSettingSerializer, ItemTypeSerializer
 )
 from users.permissions import IsAdmin, IsSuperAdmin
 
@@ -157,6 +157,40 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 # =============================================================
+# ITEM TYPES (created manually by admins)
+# =============================================================
+
+class ItemTypeListCreateView(APIView):
+    """GET: all types (admin-created + any legacy types still used by items). POST: admin creates a type."""
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsAdmin()]
+        return [AllowAny()]
+
+    def get(self, request):
+        created = list(ItemType.objects.all())
+        known = {t.name.lower() for t in created}
+        data = [{'id': str(t.id), 'name': t.name} for t in created]
+        legacy = Book.objects.exclude(material_type='').values_list('material_type', flat=True).distinct()
+        for value in sorted(set(legacy)):
+            if value.lower() not in known:
+                data.append({'id': None, 'name': value})
+        return Response(data)
+
+    def post(self, request):
+        serializer = ItemTypeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(created_by=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ItemTypeDetailView(generics.DestroyAPIView):
+    queryset = ItemType.objects.all()
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+
+# =============================================================
 # BOOK VIEWS
 # =============================================================
 
@@ -272,6 +306,24 @@ class BookCreateView(APIView):
                 book_file.seek(0)
                 book.book_file = book_file
                 logger.info(f"Book file saved locally: {title}")
+
+        # ── Dublin Core style metadata (typed manually by the admin) ──
+        def _md(key):
+            return (data.get(key, '') or '').strip()
+
+        base_url = request.build_absolute_uri('/')
+        if base_url.startswith('http://') and not settings.DEBUG:
+            base_url = 'https://' + base_url[len('http://'):]
+        book.metadata = {
+            'creator': author,
+            'date': _md('md_date'),
+            'subject': _md('md_subject'),
+            'type': _md('md_type'),
+            'format': _md('md_format') or (book.file_type or ''),
+            'identifier': f"{base_url}?item={book.id}",
+            'identifier_label': _md('md_identifier_label'),
+            'copyright': _md('md_copyright'),
+        }
 
         book.save()
         if categories.exists():

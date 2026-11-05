@@ -8,13 +8,14 @@ Why Groq:
   - Sign up at: https://console.groq.com
   - Click "Create API Key" — done in 30 seconds
   - Free limits: 14,400 requests/day, 6,000 tokens/min
-  - Uses llama-3.1-8b-instant (extremely fast, very capable)
+  - The assistant only chats about the collection and summarises items
+    (it no longer fills in item metadata - admins type that by hand)
 
-Models available free on Groq:
-  - llama-3.1-8b-instant   (default — fastest)
-  - llama-3.3-70b-versatile (smarter, slower)
-  - mixtral-8x7b-32768      (large context)
-  - gemma2-9b-it            (Google Gemma)
+Models used (verified live against the Groq /models endpoint, Nov 2026;
+the old llama-3.x / mixtral / gemma2 ids were retired):
+  - openai/gpt-oss-20b   (default — fastest)
+  - openai/gpt-oss-120b  (smarter, slower)
+  - qwen/qwen3.8-27b     (last fallback)
 
 Setup:
   1. Go to https://console.groq.com
@@ -41,11 +42,11 @@ logger = logging.getLogger('sourcepoint')
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # Model fallback order — all free on Groq
+# (the old llama-3.x / mixtral / gemma2 ids were retired by Groq and now return 404/400)
 GROQ_MODELS = [
-    "llama-3.1-8b-instant",
-    "llama-3.3-70b-versatile",
-    "mixtral-8x7b-32768",
-    "gemma2-9b-it",
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
 ]
 
 
@@ -77,20 +78,26 @@ def call_groq(messages, model=None):
     last_error = None
     for m in models_to_try:
         try:
+            payload = {
+                "model": m,
+                "messages": messages,
+                "max_tokens": 1500,
+                "temperature": 0.7,
+            }
+            if m.startswith("openai/gpt-oss"):
+                payload["reasoning_effort"] = "low"  # keeps answers fast and leaves room for the reply
             resp = requests.post(
                 GROQ_API_URL,
                 headers=headers,
-                json={
-                    "model": m,
-                    "messages": messages,
-                    "max_tokens": 1024,
-                    "temperature": 0.7,
-                },
+                json=payload,
                 timeout=30,
             )
             if resp.status_code == 200:
                 data = resp.json()
-                text = data["choices"][0]["message"]["content"]
+                text = (data["choices"][0]["message"].get("content") or "").strip()
+                if not text:
+                    last_error = "empty reply"
+                    continue
                 return text, m
             elif resp.status_code == 429:
                 last_error = "rate_limit"

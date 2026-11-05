@@ -18,6 +18,10 @@ urlpatterns = [
     path('categories/', views.CategoryListCreateView.as_view(), name='category_list'),
     path('categories/<uuid:pk>/', views.CategoryDetailView.as_view(), name='category_detail'),
 
+    # Admin-created item types
+    path('item-types/', views.ItemTypeListCreateView.as_view(), name='item_type_list'),
+    path('item-types/<uuid:pk>/', views.ItemTypeDetailView.as_view(), name='item_type_detail'),
+
     # User borrowings
     path('borrow/', views.BorrowBookView.as_view(), name='borrow_book'),
     path('borrow/<uuid:borrowing_id>/return/', views.ReturnBookView.as_view(), name='return_book'),

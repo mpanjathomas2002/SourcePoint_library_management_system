@@ -509,7 +509,7 @@ td:last-child{max-width:none;overflow:visible}
 // ── CONFIG ────────────────────────────────────────────────────
 const API='/api/v1';
 // ── STATE ─────────────────────────────────────────────────────
-const S={user:null,tok:null,books:[],cats:[],chat:[],page:null,q:'',fi:{cat:'',type:'',ord:'-created_at'},
+const S={user:null,tok:null,books:[],cats:[],types:[],chat:[],page:null,q:'',fi:{cat:'',type:'',ord:'-created_at'},
   _cb:null,_cb_t:0,_sb:null,_sb_t:0};
 const TTL=60000;
 
@@ -595,8 +595,14 @@ async function boot(){
   const page = (role==='superadmin'||role==='admin') ? 'dashboard' : 'catalog';
   go(page);
 
+  // Deep link: the item Identifier link (…/?item=<id>) opens that item once signed in
+  try {
+    const itemId = new URLSearchParams(location.search).get('item');
+    if(itemId) setTimeout(()=>{ try{ openBk(itemId); }catch(e){ console.warn('deep link:', e); } }, 400);
+  } catch(e){}
+
   // Load data in background after page is already shown
-  try { await Promise.all([loadCats(), loadBooks()]); }
+  try { await Promise.all([loadCats(), loadBooks(), loadTypes()]); }
   catch(e){ console.warn('Background data load:', e); }
   
   // Re-render catalog after data loads (if still on catalog)
@@ -683,11 +689,7 @@ function renderCatalog(){
       <select class="fsel" onchange="S.fi.cat=this.value;pgCatalog()"><option value="">All Categories</option>${co}</select>
       <select class="fsel" onchange="S.fi.type=this.value;pgCatalog()">
         <option value="">All Types</option>
-        <option value="book" ${S.fi.type==='book'?'selected':''}>Book</option>
-        <option value="textbook" ${S.fi.type==='textbook'?'selected':''}>Textbook</option>
-        <option value="ebook" ${S.fi.type==='ebook'?'selected':''}>E-Book</option>
-        <option value="journal" ${S.fi.type==='journal'?'selected':''}>Journal</option>
-        <option value="research_paper" ${S.fi.type==='research_paper'?'selected':''}>Research Paper</option>
+        ${(S.types||[]).map(t=>`<option value="${x(t.name)}" ${S.fi.type===t.name?'selected':''}>${x(t.name)}</option>`).join('')}
       </select>
       <select class="fsel" onchange="S.fi.ord=this.value;pgCatalog()">
         <option value="-created_at" ${S.fi.ord==='-created_at'?'selected':''}>Newest</option>
@@ -781,7 +783,7 @@ function renderBkModal(b){
             <span style="color:var(--amber)">${'★'.repeat(Math.round(b.average_rating))}${'☆'.repeat(5-Math.round(b.average_rating))}</span>
             <strong>${b.average_rating.toFixed(1)}</strong><span style="font-size:.78rem;color:var(--text3)">(${b.rating_count} reviews)</span>
           </div>
-          <p class="bdesc">${x(b.description||'No description available.')}</p>
+          <p class="bdesc">${x(b.description||'No description available.')}</p>${mdBlock(b)}
           <div class="bctrl" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-l)">${mkCtrl(b,ib,mx)}
           </div>
         </div>
@@ -883,8 +885,8 @@ async function sendAI(txt){
     const r=await api.post('/ai/chat/',{message:msg,history:S.chat.slice(-6).map(m=>({role:m.role,content:m.content}))});
     const d=r?await r.json():null;
     const reply=d?.reply||'I had trouble responding. Please try again.';
-    const isNotConfigured=reply.includes('GEMINI_API_KEY')||d?.error?.includes('GEMINI_API_KEY');
-    S.chat.push({role:'assistant',content:isNotConfigured?'AI not configured. Add your free GEMINI_API_KEY to .env (get one at aistudio.google.com/app/apikey)':reply,books:d?.books||[]});
+    const isNotConfigured=reply.includes('GROQ_API_KEY')||d?.error?.includes('GROQ_API_KEY');
+    S.chat.push({role:'assistant',content:isNotConfigured?'AI not configured. Add GROQ_API_KEY to the .env file (free key at console.groq.com).':reply,books:d?.books||[]});
   }catch{S.chat.push({role:'assistant',content:'Connection error. Please check your network.'});}
   const ae2=g('aim');if(ae2)ae2.innerHTML=S.chat.map(bub).join('');
   icons();scrAI();
@@ -935,16 +937,17 @@ async function pgDash(){
 
   pc(`<div style="margin-bottom:1.5rem"><h2 style="font-size:1.4rem;color:var(--forest)">Good ${gr()}, ${x(S.user.first_name||'Admin')}</h2><p style="color:var(--text3);font-size:.87rem">Collection overview for today.</p></div>
   <div class="sgrid">
-    ${sc('g','library-big',st.total_books??'—','HISTORICAL PHOTOGRAPH')}
-    ${sc('b','users',st.total_users??'—','NEWSLETTER')}
-    ${sc('a','bookmark',st.active_borrowings??'—','CONFERENCE PROGRAMMES')}
-    ${sc('r','alert-triangle',st.overdue_borrowings??'—','REPORT')}
-    ${sc('g','tags',st.total_categories??'—','NEWSPAPER CLIPPINGS')}
-    ${sc('r','ban',st.suspended_users??'—','POSTERS OR PUBLIC DOMAIN')}
+    ${sc('g','library-big',st.total_books??'—','NUMBER OF ITEMS')}
+    ${sc('b','users',st.total_users??'—','TOTAL USERS')}
+    ${sc('a','bookmark',st.active_borrowings??'—','SAVED')}
+    ${sc('r','alert-triangle',st.overdue_borrowings??'—','REPORTED')}
+    ${sc('g','tags',st.total_categories??'—','CATEGORIES')}
+    ${sc('r','ban',st.suspended_users??'—','UNDER REVIEW')}
   </div>
   <div class="card" style="margin-bottom:1.5rem"><h3 style="font-size:.95rem;margin-bottom:1rem;color:var(--forest)">Quick Actions</h3>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
       <button class="btn bp" onclick="showAddBook()"><i data-lucide="plus" size="16"></i> Add Item</button>
+      <button class="btn bs" onclick="showTypes()"><i data-lucide="shapes" size="16"></i> Manage Types</button>
       <button class="btn bs" onclick="go('users')"><i data-lucide="users" size="16"></i> Manage Users</button>
       <button class="btn bs" onclick="go('borrowings')"><i data-lucide="clipboard-list" size="16"></i> Access Records</button>
       <button class="btn ba" style="margin-left:auto" onclick="clearMock()"><i data-lucide="trash-2" size="16"></i> Clear Mock Data</button>
@@ -961,7 +964,7 @@ async function pgBooks(){
   const bks=await api.json('/library/admin/books/?ordering=-created_at&page_size=100')||[];
   pc(`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px">
     <h2 style="font-size:1.4rem;color:var(--forest)">Manage Items</h2>
-    <button class="btn bp" onclick="showAddBook()"><i data-lucide="plus" size="16"></i> Add Item</button>
+    <button class="btn bs" style="margin-left:auto;margin-right:8px" onclick="showTypes()">Manage Types</button><button class="btn bp" onclick="showAddBook()"><i data-lucide="plus" size="16"></i> Add Item</button>
   </div>
   <div class="tw"><table><thead><tr><th>Item</th><th>Categories</th><th>Type</th><th>Rating</th><th>Borrows</th><th>Status</th><th>Actions</th></tr></thead>
   <tbody>${bks.map(b=>`<tr>
@@ -974,132 +977,206 @@ async function pgBooks(){
     <td><div style="display:flex;gap:4px"><button class="btn bg sm" onclick="openBk('${b.id}')">View</button><button class="btn bg sm" style="color:var(--danger)" onclick="delBk('${b.id}','${x(b.title)}')">Delete</button></div></td>
   </tr>`).join('')}</tbody></table></div>`);
 }
+// ── ITEM TYPES (created manually by admins) ──────────────────
+async function loadTypes(){
+  try{const d=await api.json('/library/item-types/');if(Array.isArray(d))S.types=d;}catch{}
+}
+function typeOpts(sel){
+  const t=(S.types||[]).filter(t=>t.id);
+  if(!t.length)return '<option value="">No types yet - click + New</option>';
+  return t.map(t=>`<option value="${x(t.name)}" ${sel===t.name?'selected':''}>${x(t.name)}</option>`).join('');
+}
+async function addItemType(){
+  // Toggle an inline "new type" row inside the Add Item form (no browser prompt() dialog)
+  const row=g('abntrow');if(!row)return;
+  const open=row.style.display==='none'||!row.style.display;
+  row.style.display=open?'flex':'none';
+  if(open)g('abnt')?.focus();
+}
+async function saveInlineType(){
+  const inp=g('abnt');
+  const name=(inp?.value||'').trim();
+  if(!name){toast('Type a name for the new type first.','er');return;}
+  let r;
+  try{r=await api.post('/library/item-types/',{name});}catch{r=null;}
+  if(!r){toast('Network error.','er');return;}
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){toast(d.name?.[0]||d.detail||'Could not create type (admin sign-in needed).','er');return;}
+  toast('Type "'+d.name+'" created.','ok');
+  await loadTypes();
+  const sel=g('abty');
+  if(sel){sel.innerHTML=typeOpts(d.name);sel.value=d.name;}
+  if(inp)inp.value='';
+  const row=g('abntrow');if(row)row.style.display='none';
+}
+function showTypes(){
+  const rows=(S.types||[]).map(t=>`<tr><td style="padding:8px 4px;border-bottom:1px solid var(--border-l)">${x(t.name)}</td><td style="padding:8px 4px;border-bottom:1px solid var(--border-l);text-align:right">${t.id?`<button class="btn bg sm" style="color:var(--danger)" onclick="delItemType('${t.id}')">Delete</button>`:'<span style="font-size:.72rem;color:var(--text3)">used by older items</span>'}</td></tr>`).join('');
+  showModal(`<div class="mhd"><h3>Item Types</h3><button class="mcl" onclick="closeModal()"><i data-lucide="x" size="17"></i></button></div>
+  <div class="mbody">
+    <p style="font-size:.83rem;color:var(--text3);margin-bottom:10px">Create the types you use when adding items, for example Historical Photograph, Newsletter or Poster.</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="newtype" placeholder="New type name" style="flex:1"/><button class="btn bp" onclick="saveItemType()">Add</button></div>
+    ${rows?`<table style="width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table>`:'<p style="font-size:.83rem;color:var(--text3)">No types yet.</p>'}
+  </div>`);
+}
+async function saveItemType(){
+  const name=(g('newtype')?.value||'').trim();
+  if(!name)return;
+  const r=await api.post('/library/item-types/',{name});
+  if(!r){toast('Network error.','er');return;}
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){toast(d.name?.[0]||d.detail||'Could not create type.','er');return;}
+  toast('Type "'+d.name+'" created.','ok');
+  await loadTypes();showTypes();
+}
+async function delItemType(id){
+  if(!confirm('Delete this type? Items already using it keep their label.'))return;
+  const r=await api.del('/library/item-types/'+id+'/');
+  if(r&&r.ok){toast('Type deleted.','ok');await loadTypes();showTypes();}else toast('Could not delete type.','er');
+}
+
+// ── ADD ITEM FORM (manual metadata) ──────────────────────────
 function showAddBook(){
   const co=S.cats.map(c=>`<option value="${c.id}">${x(c.name)}</option>`).join('');
+  const dz='border:1.5px dashed var(--border);border-radius:var(--r2);padding:10px;background:var(--cream);cursor:pointer;width:100%;box-sizing:border-box';
   showModal(`<div class="mhd"><h3>Add New Item</h3><button class="mcl" onclick="closeModal()"><i data-lucide="x" size="17"></i></button></div>
   <div class="mbody">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="ig" style="grid-column:span 2"><label>Title *</label><input type="text" id="abt" placeholder="Item title"/></div>
-      <div class="ig"><label>Author *</label><input type="text" id="aba" placeholder="Author name"/></div>
-      <div class="ig"><label>Publisher</label><input type="text" id="abpu"/></div>
-      <div class="ig"><label>Year</label><input type="number" id="aby" placeholder="2024"/></div>
-      <div class="ig"><label>Pages</label><input type="number" id="abpg"/></div>
+      <div class="ig" style="grid-column:span 2"><label>Title *</label><input type="text" id="abt" placeholder="Title of the item"/></div>
+      <div class="ig"><label>Creator *</label><input type="text" id="aba" placeholder="Person or organisation" oninput="abId()"/></div>
+      <div class="ig"><label>Date</label><input type="date" id="abdt" onchange="abId()"/></div>
+      <div class="ig" style="grid-column:span 2"><label>Subject</label><input type="text" id="absu" placeholder="Topics or keywords, separated by commas"/></div>
       <div class="ig"><label>Type</label>
-        <select id="abty"><option value="book">Book</option><option value="textbook">Textbook</option>
-        <option value="ebook">E-Book</option><option value="journal">Journal</option>
-        <option value="research_paper">Research Paper</option></select>
+        <select id="abmt" onchange="abToggle()"><option value="text">Text</option><option value="image">Image</option></select>
       </div>
+      <div class="ig"><label>Format</label><input type="text" id="abfm" placeholder="e.g. PDF, JPEG" oninput="this.dataset.man=1;abId()"/></div>
       <div class="ig"><label>Language</label><input type="text" id="abla" value="English"/></div>
-      <div class="ig"><label>Max Borrow Days</label><input type="number" id="abmd" placeholder="30 (system default)"/></div>
+      <div class="ig"><label>Collection type</label>
+        <div style="display:flex;gap:6px"><select id="abty" style="flex:1">${typeOpts('')}</select><button type="button" class="btn bs sm" onclick="addItemType()">+ New</button></div>
+        <div id="abntrow" style="display:none;gap:6px;margin-top:6px"><input type="text" id="abnt" placeholder="New type name, e.g. Newsletter" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineType();}"/><button type="button" class="btn bp sm" onclick="saveInlineType()">Add</button></div>
+      </div>
+      <div class="ig" style="grid-column:span 2"><label>Identifier</label>
+        <input type="text" id="abid" placeholder="Creator mm yy.format (size)" oninput="this.dataset.man=1"/>
+        <div style="font-size:.73rem;color:var(--text3);margin-top:4px">Filled in automatically as creator, month, year, .format and (file size); you can edit it. A web link to the item is created when you save and shown on the item page.</div>
+      </div>
+      <div class="ig" style="grid-column:span 2"><label>Copyright / License</label><input type="text" id="abcr" placeholder="e.g. Public domain, CC BY 4.0, (c) 2024 Name"/></div>
+      <div class="ig" style="grid-column:span 2"><label>Description</label><textarea id="abde" rows="3" placeholder="What is this item about?"></textarea></div>
       <div class="ig"><label>Copies</label><input type="number" id="abcp" value="3" min="1"/></div>
+      <div class="ig"><label>Max Borrow Days</label><input type="number" id="abmd" placeholder="30 (system default)"/></div>
     </div>
-    <div class="ig" style="margin-top:6px">
-      <label>Cover Image — Upload from device</label>
-      <input type="file" id="abcov_file" accept="image/*" style="border:1.5px dashed var(--border);border-radius:var(--r2);padding:10px;background:var(--cream);cursor:pointer;width:100%;box-sizing:border-box"/>
-      <div style="font-size:.73rem;color:var(--text3);margin-top:4px">JPG, PNG, WebP supported. Saved to Supabase or local server.</div>
+    <div class="ig" id="abdocbox" style="margin-top:6px">
+      <label>Document (PDF, Word, ePub or text) - optional</label>
+      <input type="file" id="abbook_file" accept=".pdf,.doc,.docx,.epub,.mobi,.txt" onchange="abFile(this)" style="${dz}"/>
+      <div style="font-size:.73rem;color:var(--text3);margin-top:4px">Users open this after borrowing.</div>
     </div>
-    <div class="ig">
-      <label>File (PDF, document or image) — Upload from device</label>
-      <input type="file" id="abbook_file" accept=".pdf,.epub,.mobi,.txt,.docx,image/*" onchange="aiFillMeta()" style="border:1.5px dashed var(--border);border-radius:var(--r2);padding:10px;background:var(--cream);cursor:pointer;width:100%;box-sizing:border-box"/>
-      <div style="font-size:.73rem;color:var(--text3);margin-top:4px">Users open this after borrowing. Uploaded to Supabase storage or local server.</div>
-      <button type="button" class="btn bs sm" id="aimetabtn" style="margin-top:8px" onclick="aiFillMeta()">✨ Auto-fill metadata with AI</button>
-      <div id="aimetamsg" style="font-size:.73rem;color:var(--text3);margin-top:4px">Metadata (title, author, year, description) is generated automatically when you choose a file.</div>
+    <div class="ig" id="abcovbox">
+      <label>Cover image - optional</label>
+      <input type="file" id="abcov_file" accept="image/*" style="${dz}"/>
+    </div>
+    <div class="ig" id="abimgbox" style="display:none;margin-top:6px">
+      <label>Image file (JPG, PNG, WebP) - optional</label>
+      <input type="file" id="abimg_file" accept="image/*" onchange="abFile(this)" style="${dz}"/>
+      <div style="font-size:.73rem;color:var(--text3);margin-top:4px">The image is also used as the cover.</div>
     </div>
     <div class="ig">
       <label>Categories (hold Ctrl/Cmd for multiple)</label>
       <select id="abca" multiple style="height:80px;width:100%">${co}</select>
     </div>
-    <div class="ig"><label>Description</label><textarea id="abde" rows="3" placeholder="What is this item about?"></textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
       <button class="btn bs" onclick="closeModal()">Cancel</button>
       <button class="btn bp" id="savebookbtn" onclick="subAddBook()"><i data-lucide="save" size="15"></i> Save Item</button>
     </div>
   </div>`,true);
+  abToggle();
 }
-// ── AI METADATA for uploaded files (front-end only; uses existing /ai/chat/) ──
-async function aiFillMeta(){
-  const f=g('abbook_file')?.files[0]||g('abcov_file')?.files[0];
-  const msg=g('aimetamsg'),btn=g('aimetabtn');
-  if(!f){if(msg)msg.textContent='Choose a file first.';return;}
-  if(msg)msg.textContent='✨ AI is reading the file details…';
-  if(btn)btn.disabled=true;
-  let snippet='';
-  try{
-    if(/\.(txt|md|csv)$/i.test(f.name)||f.type.startsWith('text/'))snippet=(await f.slice(0,3000).text()).replace(/\s+/g,' ').trim();
-  }catch{}
-  const cats=(S.cats||[]).map(c=>c.name).join(', ');
-  const prompt='Create catalog metadata for an uploaded library file. Reply with ONLY one JSON object, no markdown, no extra text, with keys: '
-    +'title, author, publisher, publication_year (number or null), material_type (one of: book, textbook, ebook, journal, research_paper), '
-    +'language, description (2 sentences), category (best match from: '+cats+'). '
-    +'The collection holds historical photographs, newsletters, conference programmes, reports, newspaper clippings and posters. '
-    +'Use "Unknown" when a value cannot be inferred. File name: "'+f.name+'". File type: '+(f.type||'unknown')+'. Size: '+Math.round(f.size/1024)+' KB.'
-    +(snippet?' Text excerpt: '+snippet:'');
-  try{
-    const r=await api.post('/ai/chat/',{message:prompt,history:[]});
-    const d=r?await r.json():null;
-    const m=(d?.reply||'').match(/\{[\s\S]*\}/);
-    if(!m)throw new Error('no JSON');
-    const j=JSON.parse(m[0]);
-    const set=(id,v)=>{const e=g(id);if(e&&v&&v!=='Unknown'&&!e.value)e.value=v;};
-    set('abt',j.title);set('aba',j.author);set('abpu',j.publisher);
-    if(j.publication_year)set('aby',String(j.publication_year));
-    set('abla',j.language);set('abde',j.description);
-    const ty=g('abty');if(ty&&j.material_type&&[...ty.options].some(o=>o.value===j.material_type))ty.value=j.material_type;
-    const ca=g('abca');if(ca&&j.category)[...ca.options].forEach(o=>{if(o.text.toLowerCase()===String(j.category).toLowerCase())o.selected=true;});
-    if(msg)msg.textContent='✅ Metadata generated. Review and edit before saving.';
-  }catch{
-    if(msg)msg.textContent='Could not generate metadata automatically. You can fill the fields manually.';
-  }finally{if(btn)btn.disabled=false;}
+function abToggle(){
+  const img=g('abmt')?.value==='image';
+  const sd=(id,v)=>{const e=g(id);if(e)e.style.display=v?'':'none';};
+  sd('abdocbox',!img);sd('abcovbox',!img);sd('abimgbox',img);
+  abId();
+}
+function abCurFile(){
+  const img=g('abmt')?.value==='image';
+  return (img?g('abimg_file'):g('abbook_file'))?.files[0]||null;
+}
+function abSize(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';}
+function abFile(inp){
+  const f=inp.files[0],fm=g('abfm');
+  if(f&&fm&&!fm.dataset.man)fm.value=(f.name.split('.').pop()||'').toUpperCase();
+  abId();
+}
+function abId(){
+  const el=g('abid');if(!el||el.dataset.man)return;
+  const cr=(g('aba')?.value||'').trim(),d=g('abdt')?.value||'',f=abCurFile();
+  const fmt=((g('abfm')?.value||'').trim()||(f?f.name.split('.').pop():'')).toLowerCase();
+  const head=[cr,d?d.slice(5,7):'',d?d.slice(2,4):''].filter(Boolean).join(' ');
+  el.value=head?head+(fmt?'.'+fmt:'')+(f?' ('+abSize(f.size)+')':''):'';
 }
 async function subAddBook(){
   const t=g('abt')?.value.trim(), a=g('aba')?.value.trim();
-  if(!t||!a){toast('Title and author are required.','er');return;}
+  if(!t||!a){toast('Title and creator are required.','er');return;}
+  const isImg=g('abmt')?.value==='image';
+  const d=g('abdt')?.value||'';
 
   const btn=g('savebookbtn');
   if(btn){btn.disabled=true;btn.innerHTML='<i data-lucide="upload" size="15"></i> Saving…';icons();}
 
-  // Use FormData so we can send files (multipart/form-data)
+  // FormData so files can be sent (multipart/form-data)
   const fd=new FormData();
   fd.append('title',t);
   fd.append('author',a);
-  fd.append('publisher',g('abpu')?.value||'');
-  fd.append('publication_year',g('aby')?.value||'');
-  fd.append('pages',g('abpg')?.value||'');
+  fd.append('publication_year',d?d.slice(0,4):'');
   fd.append('material_type',g('abty')?.value||'book');
   fd.append('language',g('abla')?.value||'English');
   fd.append('max_borrow_days',g('abmd')?.value||'');
   fd.append('total_copies',g('abcp')?.value||'3');
   fd.append('description',g('abde')?.value||'');
+  // Metadata typed by the admin
+  fd.append('md_date',d);
+  fd.append('md_subject',g('absu')?.value||'');
+  fd.append('md_type',isImg?'Image':'Text');
+  fd.append('md_format',g('abfm')?.value||'');
+  fd.append('md_identifier_label',g('abid')?.value||'');
+  fd.append('md_copyright',g('abcr')?.value||'');
 
-  // Append selected categories
   const catSel=g('abca');
   if(catSel){[...catSel.selectedOptions].forEach(o=>fd.append('category_ids',o.value));}
 
-  // Attach cover image file if selected
-  const covFile=g('abcov_file')?.files[0];
-  if(covFile)fd.append('cover_image',covFile);
+  // Files are optional: image-only or document-only uploads both work
+  if(isImg){
+    const im=g('abimg_file')?.files[0];
+    if(im){fd.append('book_file',im);fd.append('cover_image',im);}
+  }else{
+    const cov=g('abcov_file')?.files[0];
+    if(cov)fd.append('cover_image',cov);
+    const doc=g('abbook_file')?.files[0];
+    if(doc)fd.append('book_file',doc);
+  }
 
-  // Attach book content file if selected
-  const bookFile=g('abbook_file')?.files[0];
-  if(bookFile)fd.append('book_file',bookFile);
-
-  // Send as multipart — do NOT set Content-Type header (browser sets boundary automatically)
+  // Send as multipart: do NOT set Content-Type (browser adds the boundary)
   const h={};
   if(S.tok?.access)h['Authorization']='Bearer '+S.tok.access;
   try{
     const res=await fetch(API+'/library/books/create/',{method:'POST',headers:h,body:fd});
-    const d=await res.json();
+    const dd=await res.json();
     if(res.ok){
       toast(`"${t}" added to the collection!`,'ok');
-      closeModal();S._bc=null;await loadBooks('',true);pgBooks();
+      closeModal();S._bc=null;await loadBooks('',true);await loadTypes();pgBooks();
     } else {
-      toast(d.error||d.title?.[0]||d.detail||'Failed to save item.','er');
+      toast(dd.error||dd.title?.[0]||dd.detail||'Failed to save item.','er');
     }
   }catch(e){
     toast('Network error: '+e.message,'er');
   }finally{
     if(btn){btn.disabled=false;btn.innerHTML='<i data-lucide="save" size="15"></i> Save Item';icons();}
   }
+}
+// Metadata block shown on the item page
+function mdBlock(b){
+  const md=b.metadata||{};
+  const rows=[['Creator',b.author],['Date',md.date],['Subject',md.subject],['Type',md.type],['Format',md.format],['Language',b.language],['Copyright',md.copyright],['Identifier',md.identifier_label]]
+    .filter(r=>r[1]).map(r=>`<tr><td style="padding:3px 10px 3px 0;color:var(--text3);white-space:nowrap;vertical-align:top">${r[0]}</td><td style="padding:3px 0">${x(r[1])}</td></tr>`).join('');
+  const link=md.identifier?`<tr><td style="padding:3px 10px 3px 0;color:var(--text3);vertical-align:top">Link</td><td style="padding:3px 0;word-break:break-all"><a href="${x(md.identifier)}" target="_blank" rel="noopener">${x(md.identifier)}</a></td></tr>`:'';
+  return (rows||link)?`<table style="font-size:.82rem;margin:10px 0;border-collapse:collapse">${rows}${link}</table>`:'';
 }
 async function delBk(id,title){
   if(!confirm(`Delete "${title}"?`))return;
@@ -1493,6 +1570,11 @@ document.addEventListener('DOMContentLoaded', function(){
 
   document.addEventListener('keydown', function(e){
     if(e.key !== 'Enter') return;
+    // Only act while the sign-in screen is actually showing. Without this check, pressing
+    // Enter in the AI chat re-ran doLogin() (the hidden login fields still hold the password),
+    // which re-booted the app and made the chat "close" itself.
+    var au=document.getElementById('auth');
+    if(!au||au.classList.contains('hidden')||S.user) return;
     var lw=document.getElementById('lwrap'), rw=document.getElementById('rwrap');
     if(lw&&!lw.classList.contains('hidden')) doLogin();
     else if(rw&&!rw.classList.contains('hidden')) doReg();
