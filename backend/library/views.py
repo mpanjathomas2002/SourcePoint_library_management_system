@@ -8,7 +8,7 @@ import logging
 import os
 import mimetypes
 import requests as http_requests
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.utils import timezone
 from django.conf import settings
 from django.http import StreamingHttpResponse
@@ -710,8 +710,25 @@ class BorrowSettingsView(APIView):
 class AdminStatsView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]
 
+    def _items_by_type(self):
+        """Item count per admin-created collection type (zero counts included)."""
+        counts = {}
+        for row in Book.objects.values('material_type').annotate(c=Count('id')):
+            counts[(row['material_type'] or '').strip().lower()] = counts.get((row['material_type'] or '').strip().lower(), 0) + row['c']
+        out, used = [], set()
+        for t in ItemType.objects.order_by('name'):
+            key = t.name.strip().lower()
+            used.add(key)
+            out.append({'name': t.name, 'count': counts.get(key, 0)})
+        other = sum(c for k, c in counts.items() if k not in used)
+        if other:
+            out.append({'name': 'Older / untyped items', 'count': other, 'other': True})
+        return out
+
     def get(self, request):
         return Response({
+            'items_by_type': self._items_by_type(),
+            'items_total': Book.objects.count(),
             'total_books': Book.objects.filter(is_available=True).count(),
             'total_users': User.objects.filter(role='user', status='active').count(),
             'active_borrowings': Borrowing.objects.filter(status='active').count(),
