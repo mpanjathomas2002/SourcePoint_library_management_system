@@ -8,6 +8,7 @@ urlpatterns = [
     path('books/', views.BookListView.as_view(), name='book_list'),
     path('books/create/', views.BookCreateView.as_view(), name='book_create'),
     path('books/<uuid:pk>/', views.BookDetailView.as_view(), name='book_detail'),
+    path('books/<uuid:pk>/edit/', views.BookEditView.as_view(), name='book_edit'),
     path('books/<uuid:book_id>/rate/', views.RateBookView.as_view(), name='rate_book'),
     # Authenticated book reading — proxies file through Django (no Supabase auth issues)
     path('books/<uuid:book_id>/read/', views.ServeBookFileView.as_view(), name='read_book'),

@@ -333,6 +333,112 @@ class BookCreateView(APIView):
         return Response(BookDetailSerializer(book, context={'request': request}).data, status=201)
 
 
+class BookEditView(APIView):
+    """
+    PATCH /api/v1/library/books/<uuid>/edit/
+    Admin-only. Edits an existing item: core fields, Dublin Core metadata, categories and
+    (optionally) replaces the document / cover. Anything not sent is left unchanged.
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def patch(self, request, pk):
+        try:
+            book = Book.objects.get(pk=pk)
+        except Book.DoesNotExist:
+            return Response({'error': 'Item not found.'}, status=404)
+        data = request.data
+
+        def has(key):
+            return key in data
+
+        def txt(key):
+            return (data.get(key, '') or '').strip()
+
+        if has('title'):
+            if not txt('title'):
+                return Response({'error': 'Title cannot be empty.'}, status=400)
+            book.title = txt('title')
+        if has('author'):
+            if not txt('author'):
+                return Response({'error': 'Creator cannot be empty.'}, status=400)
+            book.author = txt('author')
+        if has('language'):
+            book.language = txt('language') or book.language
+        if has('description'):
+            book.description = data.get('description', '') or ''
+        if has('material_type') and txt('material_type'):
+            book.material_type = txt('material_type')
+        if has('publication_year'):
+            try:
+                book.publication_year = int(data.get('publication_year')) if data.get('publication_year') else None
+            except (TypeError, ValueError):
+                return Response({'error': 'Publication year must be a number.'}, status=400)
+
+        if has('total_copies'):
+            try:
+                new_total = max(1, int(data.get('total_copies') or 1))
+            except (TypeError, ValueError):
+                return Response({'error': 'Copies must be a number.'}, status=400)
+            borrowed_out = max(0, book.total_copies - book.available_copies)
+            book.total_copies = new_total
+            book.available_copies = max(0, new_total - borrowed_out)
+            book.is_available = book.available_copies > 0
+
+        # Files: only replaced when a new one is sent
+        slug = book.slug
+        cover_file = request.FILES.get('cover_image')
+        if cover_file:
+            up = _upload_to_supabase(cover_file, f"covers/{slug}-{cover_file.name}")
+            if up:
+                book.cover_image_url = f"supabase://{up}"
+                book.cover_image = None
+            else:
+                cover_file.seek(0)
+                book.cover_image = cover_file
+                book.cover_image_url = ''
+        book_file = request.FILES.get('book_file')
+        if book_file:
+            ext = os.path.splitext(book_file.name)[1].lower().lstrip('.')
+            book.file_type = ext or book.file_type or 'pdf'
+            up = _upload_to_supabase(book_file, f"books/{slug}-{book_file.name}")
+            if up:
+                book.file_url = f"supabase://{up}"
+                book.book_file = None
+            else:
+                book_file.seek(0)
+                book.book_file = book_file
+                book.file_url = ''
+
+        # Metadata: merge what was sent into what is stored
+        md = dict(book.metadata or {})
+        md['creator'] = book.author
+        for src, dst in [('md_date', 'date'), ('md_subject', 'subject'), ('md_type', 'type'),
+                         ('md_format', 'format'), ('md_identifier_label', 'identifier_label'),
+                         ('md_copyright', 'copyright')]:
+            if has(src):
+                md[dst] = txt(src)
+        if not md.get('format') and book.file_type:
+            md['format'] = book.file_type
+        if not md.get('identifier'):
+            base_url = request.build_absolute_uri('/')
+            if base_url.startswith('http://') and not settings.DEBUG:
+                base_url = 'https://' + base_url[len('http://'):]
+            md['identifier'] = f"{base_url}?item={book.id}"
+        book.metadata = md
+        book.save()
+
+        # Categories: the form always sends categories_set=1 so an empty selection clears them
+        if has('categories_set'):
+            ids = data.getlist('category_ids') if hasattr(data, 'getlist') else []
+            book.categories.set(Category.objects.filter(id__in=ids))
+
+        logger.info(f"Book edited: '{book.title}' by {request.user.email}")
+        return Response(BookDetailSerializer(book, context={'request': request}).data)
+
+    put = patch
+
+
 class AdminBookListView(generics.ListAPIView):
     serializer_class = BookDetailSerializer
     permission_classes = [IsAuthenticated, IsAdmin]

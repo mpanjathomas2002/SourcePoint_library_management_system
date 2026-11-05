@@ -962,6 +962,7 @@ function sc(cl,ic,val,lbl){return `<div class="scard"><div class="sicon ${cl}"><
 // ── ADMIN: BOOKS ──────────────────────────────────────────────
 async function pgBooks(){
   const bks=await api.json('/library/admin/books/?ordering=-created_at&page_size=100')||[];
+  S._adm=bks;
   pc(`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px">
     <h2 style="font-size:1.4rem;color:var(--forest)">Manage Items</h2>
     <button class="btn bs" style="margin-left:auto;margin-right:8px" onclick="showTypes()">Manage Types</button><button class="btn bp" onclick="showAddBook()"><i data-lucide="plus" size="16"></i> Add Item</button>
@@ -974,7 +975,7 @@ async function pgBooks(){
     <td><span style="color:var(--amber)">★</span> <span style="font-size:.85rem">${(b.average_rating||0).toFixed(1)}</span></td>
     <td style="font-size:.85rem">${b.borrow_count||0}</td>
     <td><span class="badge ${b.is_available?'bg-ok':'bg-gy'}">${b.is_available?'Available':'Unavailable'}</span></td>
-    <td><div style="display:flex;gap:4px"><button class="btn bg sm" onclick="openBk('${b.id}')">View</button><button class="btn bg sm" style="color:var(--danger)" onclick="delBk('${b.id}','${x(b.title)}')">Delete</button></div></td>
+    <td><div style="display:flex;gap:4px"><button class="btn bg sm" onclick="openBk('${b.id}')">View</button><button class="btn bg sm" onclick="showAddBook('${b.id}')">Edit</button><button class="btn bg sm" style="color:var(--danger)" onclick="delBk('${b.id}','${x(b.title)}')">Delete</button></div></td>
   </tr>`).join('')}</tbody></table></div>`);
 }
 // ── ITEM TYPES (created manually by admins) ──────────────────
@@ -1035,10 +1036,12 @@ async function delItemType(id){
 }
 
 // ── ADD ITEM FORM (manual metadata) ──────────────────────────
-function showAddBook(){
+function showAddBook(editId){
+  const ed=editId?(S._adm||[]).find(b=>String(b.id)===String(editId)):null;
+  if(editId&&!ed){toast('Item not found - reload the list and try again.','er');return;}
   const co=S.cats.map(c=>`<option value="${c.id}">${x(c.name)}</option>`).join('');
   const dz='border:1.5px dashed var(--border);border-radius:var(--r2);padding:10px;background:var(--cream);cursor:pointer;width:100%;box-sizing:border-box';
-  showModal(`<div class="mhd"><h3>Add New Item</h3><button class="mcl" onclick="closeModal()"><i data-lucide="x" size="17"></i></button></div>
+  showModal(`<div class="mhd"><h3>${ed?'Edit Item':'Add New Item'}</h3><button class="mcl" onclick="closeModal()"><i data-lucide="x" size="17"></i></button></div>
   <div class="mbody">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="ig" style="grid-column:span 2"><label>Title *</label><input type="text" id="abt" placeholder="Title of the item"/></div>
@@ -1080,11 +1083,32 @@ function showAddBook(){
       <label>Categories (hold Ctrl/Cmd for multiple)</label>
       <select id="abca" multiple style="height:80px;width:100%">${co}</select>
     </div>
+    ${ed?'<div style="font-size:.76rem;color:var(--text3);margin-top:4px">Leave the file fields empty to keep the current document and cover.</div>':''}
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
       <button class="btn bs" onclick="closeModal()">Cancel</button>
-      <button class="btn bp" id="savebookbtn" onclick="subAddBook()"><i data-lucide="save" size="15"></i> Save Item</button>
+      <button class="btn bp" id="savebookbtn" onclick="subAddBook(${ed?`'${ed.id}'`:''})"><i data-lucide="save" size="15"></i> ${ed?'Save Changes':'Save Item'}</button>
     </div>
   </div>`,true);
+  if(ed){
+    const md=ed.metadata||{};
+    const set=(id,v)=>{const e=g(id);if(e)e.value=v==null?'':v;};
+    set('abt',ed.title);set('aba',ed.author);set('abdt',md.date||'');set('absu',md.subject||'');
+    set('abmt',String(md.type||'').toLowerCase()==='image'?'image':'text');
+    set('abfm',md.format||ed.file_type||'');set('abla',ed.language||'English');
+    set('abid',md.identifier_label||'');set('abcr',md.copyright||'');set('abde',ed.description||'');
+    set('abcp',ed.total_copies||1);
+    if(g('abfm')?.value)g('abfm').dataset.man=1;
+    if(g('abid')?.value)g('abid').dataset.man=1;
+    const ty=g('abty');
+    if(ty&&ed.material_type){
+      if(![...ty.options].some(o=>o.value===ed.material_type)){
+        const o=document.createElement('option');o.value=ed.material_type;o.textContent=ed.material_type;ty.insertBefore(o,ty.firstChild);
+      }
+      ty.value=ed.material_type;
+    }
+    const ids=(ed.categories||[]).map(c=>String(c.id));
+    const ca=g('abca');if(ca)[...ca.options].forEach(o=>{o.selected=ids.includes(o.value);});
+  }
   abToggle();
 }
 function abDate(el){
@@ -1125,7 +1149,7 @@ function abId(){
   const head=[cr,d?d.slice(5,7):'',d?d.slice(2,4):''].filter(Boolean).join(' ');
   el.value=head?head+(fmt?'.'+fmt:'')+(f?' ('+abSize(f.size)+')':''):'';
 }
-async function subAddBook(){
+async function subAddBook(editId){
   const t=g('abt')?.value.trim(), a=g('aba')?.value.trim();
   if(!t||!a){toast('Title and creator are required.','er');return;}
   const isImg=g('abmt')?.value==='image';
@@ -1151,6 +1175,7 @@ async function subAddBook(){
   fd.append('md_format',g('abfm')?.value||'');
   fd.append('md_identifier_label',g('abid')?.value||'');
   fd.append('md_copyright',g('abcr')?.value||'');
+  if(editId)fd.append('categories_set','1');
 
   const catSel=g('abca');
   if(catSel){[...catSel.selectedOptions].forEach(o=>fd.append('category_ids',o.value));}
@@ -1170,10 +1195,10 @@ async function subAddBook(){
   const h={};
   if(S.tok?.access)h['Authorization']='Bearer '+S.tok.access;
   try{
-    const res=await fetch(API+'/library/books/create/',{method:'POST',headers:h,body:fd});
+    const res=await fetch(API+(editId?'/library/books/'+editId+'/edit/':'/library/books/create/'),{method:editId?'PATCH':'POST',headers:h,body:fd});
     const dd=await res.json();
     if(res.ok){
-      toast(`"${t}" added to the collection!`,'ok');
+      toast(editId?`"${t}" updated.`:`"${t}" added to the collection!`,'ok');
       closeModal();S._bc=null;await loadBooks('',true);await loadTypes();pgBooks();
     } else {
       toast(dd.error||dd.title?.[0]||dd.detail||'Failed to save item.','er');
@@ -1181,7 +1206,7 @@ async function subAddBook(){
   }catch(e){
     toast('Network error: '+e.message,'er');
   }finally{
-    if(btn){btn.disabled=false;btn.innerHTML='<i data-lucide="save" size="15"></i> Save Item';icons();}
+    if(btn){btn.disabled=false;btn.innerHTML='<i data-lucide="save" size="15"></i> '+(editId?'Save Changes':'Save Item');icons();}
   }
 }
 // Metadata block shown on the item page
